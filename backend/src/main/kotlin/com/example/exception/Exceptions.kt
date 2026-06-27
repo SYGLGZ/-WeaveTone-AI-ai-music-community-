@@ -1,0 +1,6 @@
+package com.example.exception
+
+class UnauthorizedException(message: String) : RuntimeException(message)
+class ValidationException(message: String) : RuntimeException(message)
+class NotFoundException(message: String) : RuntimeException(message)
+class RateLimitException(message: String) : RuntimeException(message)

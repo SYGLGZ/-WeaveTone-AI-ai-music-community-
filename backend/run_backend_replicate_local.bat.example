@@ -1,0 +1,38 @@
+@echo off
+cd /d "%~dp0"
+
+echo ========================================
+echo AI Music Backend - Replicate MusicGen
+echo ========================================
+echo.
+
+REM 1) Copy this file to:
+REM    run_backend_replicate_local.bat
+REM
+REM 2) Replace the token below with your own Replicate API token.
+REM    Do NOT commit run_backend_replicate_local.bat to Git.
+
+set "DB_URL=jdbc:h2:file:./data/aimusic_demo;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE"
+set DB_USER=sa
+set DB_PASSWORD=
+
+set AI_PROVIDER=replicate
+set REPLICATE_API_TOKEN=paste_your_replicate_api_token_here
+set REPLICATE_MODEL_OWNER=meta
+set REPLICATE_MODEL_NAME=musicgen
+
+echo DB_URL=%DB_URL%
+echo DB_USER=%DB_USER%
+echo AI_PROVIDER=%AI_PROVIDER%
+echo REPLICATE_MODEL_OWNER=%REPLICATE_MODEL_OWNER%
+echo REPLICATE_MODEL_NAME=%REPLICATE_MODEL_NAME%
+echo.
+echo Starting backend on http://0.0.0.0:8080 ...
+echo Keep this window open while testing the Android app.
+echo.
+
+call gradlew.bat run
+
+echo.
+echo Backend process exited. If you see an error above, send it to Codex.
+pause

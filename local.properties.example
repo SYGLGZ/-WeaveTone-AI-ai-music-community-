@@ -1,0 +1,5 @@
+# Copy the line below into local.properties and replace the host with your computer's LAN IP.
+# Android emulator: http://10.0.2.2:8080/
+# USB device with adb reverse: http://127.0.0.1:8080/
+# Physical device on the same LAN: http://192.168.x.x:8080/
+BACKEND_BASE_URL=http://10.0.2.2:8080/

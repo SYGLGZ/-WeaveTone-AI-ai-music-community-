@@ -1,0 +1,41 @@
+@echo off
+cd /d "%~dp0"
+
+echo ========================================
+echo AI Music Backend - MiniMax Music
+echo ========================================
+echo.
+
+REM 1) Copy this file to:
+REM    run_backend_minimax_local.bat
+REM
+REM 2) Replace the API key below with your own MiniMax API key.
+REM    Do NOT commit run_backend_minimax_local.bat to Git.
+
+set "DB_URL=jdbc:h2:file:./data/aimusic_demo;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE"
+set DB_USER=sa
+set DB_PASSWORD=
+
+set AI_PROVIDER=minimax
+set MINIMAX_API_KEY=paste_your_minimax_api_key_here
+set MINIMAX_MODEL=music-2.6-free
+set MINIMAX_OUTPUT_FORMAT=url
+set MINIMAX_INSTRUMENTAL=true
+set MINIMAX_REQUEST_TIMEOUT_MS=300000
+
+echo DB_URL=%DB_URL%
+echo DB_USER=%DB_USER%
+echo AI_PROVIDER=%AI_PROVIDER%
+echo MINIMAX_MODEL=%MINIMAX_MODEL%
+echo MINIMAX_OUTPUT_FORMAT=%MINIMAX_OUTPUT_FORMAT%
+echo MINIMAX_REQUEST_TIMEOUT_MS=%MINIMAX_REQUEST_TIMEOUT_MS%
+echo.
+echo Starting backend on http://0.0.0.0:8080 ...
+echo Keep this window open while testing the Android app.
+echo.
+
+call gradlew.bat run
+
+echo.
+echo Backend process exited. If you see an error above, send it to Codex.
+pause

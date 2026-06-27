@@ -1,0 +1,137 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">AI 音乐</string>
+
+    <string name="tab_discover">发现</string>
+    <string name="tab_library">音乐库</string>
+    <string name="tab_create">创作</string>
+    <string name="tab_profile">我的</string>
+
+    <string name="home_hot_music">热门音乐</string>
+    <string name="home_latest_releases">最新发布</string>
+    <string name="home_unknown_artist">未知创作者</string>
+    <string name="home_play_count">%1$d 播放</string>
+
+    <string name="profile_title">我的</string>
+    <string name="profile_local_user">本地用户</string>
+    <string name="profile_login_hint">登录后可同步数据</string>
+    <string name="profile_login_register">登录 / 注册</string>
+    <string name="profile_music_management">音乐管理</string>
+    <string name="profile_my_playlists">我的播放列表</string>
+    <string name="profile_my_favorites">我的收藏</string>
+    <string name="profile_local_music">本地音乐</string>
+    <string name="profile_settings">设置</string>
+    <string name="profile_app_settings">应用设置</string>
+    <string name="profile_about">关于</string>
+
+    <string name="playlist_title">播放列表</string>
+    <string name="playlist_new">新建播放列表</string>
+    <string name="playlist_my_online">我的在线播放列表</string>
+    <string name="playlist_local">本地播放列表</string>
+    <string name="playlist_empty">还没有播放列表</string>
+    <string name="playlist_create_first">创建你的第一个播放列表</string>
+    <string name="playlist_enter_name">输入播放列表名称</string>
+    <string name="playlist_create">创建</string>
+    <string name="playlist_cancel">取消</string>
+    <string name="playlist_created_at">创建于 %1$s</string>
+    <string name="playlist_track_count">%1$d 首歌曲</string>
+
+    <string name="playlist_detail_title">播放列表详情</string>
+    <string name="playlist_detail_songs_in_playlist">播放列表中的歌曲</string>
+    <string name="playlist_detail_songs_count">%1$d 首歌曲</string>
+    <string name="playlist_detail_play_all">播放全部</string>
+    <string name="playlist_detail_empty">还没有歌曲，快去添加吧</string>
+
+    <string name="player_unknown_song">未知歌曲</string>
+    <string name="player_unknown_artist">未知艺术家</string>
+
+    <string name="create_center">创作中心</string>
+    <string name="create_ai_music">AI 音乐创作</string>
+    <string name="create_ai_desc">用文字描述生成你的专属音乐</string>
+    <string name="create_upload_music">上传音乐</string>
+    <string name="create_upload_desc">分享你的音乐作品到社区</string>
+
+    <string name="search_title">搜索</string>
+    <string name="search_placeholder">搜索歌曲、用户...</string>
+    <string name="search_idle_hint">输入关键词开始搜索</string>
+    <string name="search_no_results">没有找到结果</string>
+    <string name="search_tracks_section">歌曲</string>
+    <string name="search_users_section">用户</string>
+
+    <string name="ai_generate_title">AI 创作</string>
+    <string name="ai_describe_music">描述你想要的音乐</string>
+    <string name="ai_prompt_placeholder">例如：一首轻快的电子音乐，有钢琴旋律...</string>
+    <string name="ai_bpm_label">BPM</string>
+    <string name="ai_duration_label">时长（秒）</string>
+    <string name="ai_genre_label">流派</string>
+    <string name="ai_generate_button">生成音乐</string>
+    <string name="ai_generating">生成中...</string>
+    <string name="ai_generating_progress">生成中 %1$d%%</string>
+    <string name="ai_generated_music">AI 生成音乐</string>
+    <string name="ai_click_to_preview">点击试听</string>
+    <string name="ai_close">关闭</string>
+
+    <string name="login_create_account">创建账号</string>
+    <string name="login_welcome_back">欢迎回来</string>
+    <string name="login_register_subtitle">注册加入 AI 音乐社区</string>
+    <string name="login_login_subtitle">登录继续你的音乐之旅</string>
+    <string name="login_username">用户名</string>
+    <string name="login_email_optional">邮箱（选填）</string>
+    <string name="login_password">密码</string>
+    <string name="login_register_button">注册</string>
+    <string name="login_login_button">登录</string>
+    <string name="login_has_account">已有账号？立即登录</string>
+    <string name="login_no_account">没有账号？立即注册</string>
+
+    <string name="settings_title">设置</string>
+    <string name="settings_about_app">关于应用</string>
+    <string name="settings_app_name">应用名称</string>
+    <string name="settings_version">版本</string>
+    <string name="settings_tech_stack">技术栈</string>
+    <string name="settings_audio_engine">音频引擎</string>
+    <string name="settings_ai_model">AI 模型</string>
+    <string name="settings_features">功能特性</string>
+    <string name="settings_feature_scan">本地音乐扫描与管理</string>
+    <string name="settings_feature_playlist">播放列表创建与编辑</string>
+    <string name="settings_feature_ai">AI 音乐智能创作</string>
+    <string name="settings_feature_background">后台播放与锁屏控制</string>
+    <string name="settings_feature_modes">多种播放模式</string>
+
+    <string name="library_title">音乐库</string>
+    <string name="library_search_placeholder">搜索歌曲或艺术家...</string>
+    <string name="library_my_music">我的音乐</string>
+    <string name="library_scan">扫描</string>
+    <string name="library_no_music">还没有音乐</string>
+    <string name="library_scan_hint">点击扫描本地音乐文件</string>
+    <string name="library_scan_music">扫描音乐</string>
+
+    <string name="cd_back">返回</string>
+    <string name="cd_search">搜索</string>
+    <string name="cd_play">播放</string>
+    <string name="cd_pause">暂停</string>
+    <string name="cd_favorite">收藏</string>
+    <string name="cd_user_avatar">用户头像</string>
+    <string name="cd_login">登录</string>
+    <string name="cd_delete">删除</string>
+    <string name="cd_clear">清除</string>
+    <string name="cd_refresh">刷新</string>
+    <string name="cd_add">添加</string>
+    <string name="cd_music_note">歌曲封面</string>
+    <string name="cd_playlist_cover">播放列表封面</string>
+    <string name="cd_api_settings">API 设置</string>
+    <string name="cd_ai_create">AI 创作</string>
+    <string name="cd_upload">上传</string>
+    <string name="cd_app_icon">应用图标</string>
+    <string name="cd_email">邮箱</string>
+    <string name="cd_password">密码</string>
+    <string name="cd_show_password">显示密码</string>
+    <string name="cd_hide_password">隐藏密码</string>
+    <string name="cd_error">错误</string>
+    <string name="cd_previous">上一首</string>
+    <string name="cd_next">下一首</string>
+    <string name="cd_shuffle">随机</string>
+    <string name="cd_repeat">循环</string>
+    <string name="cd_settings">设置</string>
+    <string name="cd_playlists">播放列表</string>
+    <string name="cd_play_arrow">播放</string>
+</resources>

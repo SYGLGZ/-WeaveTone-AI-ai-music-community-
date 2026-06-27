@@ -1,0 +1,14 @@
+.gradle/
+.kotlin/
+.idea/
+build/
+data/
+uploads/
+local.properties
+.env
+run_backend_minimax_local.bat
+run_backend_replicate_local.bat
+
+# Legacy duplicate wrapper files; Gradle uses gradle/wrapper/*
+/gradle/gradle-wrapper.jar
+/gradle/gradle-wrapper.properties

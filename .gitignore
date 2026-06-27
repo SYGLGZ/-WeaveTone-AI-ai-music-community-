@@ -1,0 +1,33 @@
+*.iml
+.DS_Store
+.gradle/
+.kotlin/
+.tmp/
+.idea/
+.trae/
+**/build/
+captures/
+.externalNativeBuild/
+.cxx/
+local.properties
+*.hprof
+
+# Local runtime data and generated media
+.uploads/
+backend/data/
+backend/uploads/
+
+# Local AI provider secrets
+backend/run_backend_replicate_local.bat
+backend/run_backend_minimax_local.bat
+backend/.env
+.env
+*.env.local
+
+# Local course/report working files (not part of the public project)
+readme/
+tools/
+
+# Accidentally downloaded Gradle distributions
+**/gradle/*.zip
+**/gradle/**/*.zip
