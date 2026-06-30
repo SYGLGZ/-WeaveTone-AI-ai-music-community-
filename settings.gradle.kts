@@ -26,5 +26,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "ai-music-android"
+rootProject.name = "weavetone-android"
 include(":app")

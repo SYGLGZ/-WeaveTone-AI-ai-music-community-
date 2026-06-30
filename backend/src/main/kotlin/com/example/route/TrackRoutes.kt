@@ -29,6 +29,7 @@ import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.slf4j.LoggerFactory
 import java.io.File
+import java.util.UUID
 
 private val logger = LoggerFactory.getLogger("TrackRoutes")
 
@@ -82,6 +83,7 @@ fun Application.trackRoutes() {
             var isAiGenerated = false
             var aiPrompt: String? = null
             var filePath = ""
+            var uploadError: UploadValidationException? = null
             multipart.forEachPart { part ->
                 when (part) {
                     is PartData.FormItem -> {
@@ -98,30 +100,40 @@ fun Application.trackRoutes() {
                         }
                     }
                     is PartData.FileItem -> {
-                        if (part.name == "file") {
-                            val originalName = part.originalFileName ?: "upload"
-                            val savedName = "${System.currentTimeMillis()}_${originalName}"
-                            val uploadDir = File("uploads")
-                            if (!uploadDir.exists()) uploadDir.mkdirs()
-                            val file = File(uploadDir, savedName)
-                            part.streamProvider().use { input ->
-                                file.outputStream().use { output ->
-                                    input.copyTo(output)
-                                }
+                        if (part.name == "file" && filePath.isBlank() && uploadError == null) {
+                            try {
+                                filePath = saveUploadedAudio(part)
+                            } catch (e: UploadValidationException) {
+                                uploadError = e
                             }
-                            filePath = "uploads/$savedName"
                         }
                     }
                     else -> {}
                 }
                 part.dispose()
             }
-            if (title.isBlank()) {
-                call.respond(HttpStatusCode.BadRequest, ErrorResponse("Title is required"))
+            uploadError?.let {
+                call.respond(it.status, ErrorResponse(it.message ?: "Invalid audio upload"))
+                return@post
+            }
+            title = title.trim()
+            if (title.length !in 1..200) {
+                File(filePath).delete()
+                call.respond(HttpStatusCode.BadRequest, ErrorResponse("Title must be 1-200 characters"))
                 return@post
             }
             if (filePath.isBlank()) {
                 call.respond(HttpStatusCode.BadRequest, ErrorResponse("File is required"))
+                return@post
+            }
+            if (bpm != null && bpm !in 1..300) {
+                File(filePath).delete()
+                call.respond(HttpStatusCode.BadRequest, ErrorResponse("BPM must be between 1 and 300"))
+                return@post
+            }
+            if (description != null && description!!.length > 2_000) {
+                File(filePath).delete()
+                call.respond(HttpStatusCode.BadRequest, ErrorResponse("Description must be at most 2000 characters"))
                 return@post
             }
             val finalArtist = artist ?: uname
@@ -193,9 +205,29 @@ fun Application.trackRoutes() {
 
         delete("/api/v1/music/{id}") {
             val (uid, _) = call.requireAuth() ?: return@delete
-            val tid = call.parameters["id"]?.toIntOrNull() ?: return@delete
+            val tid = call.parameters["id"]?.toIntOrNull() ?: run {
+                call.respond(HttpStatusCode.BadRequest, ErrorResponse("Invalid id"))
+                return@delete
+            }
+            val track = transaction { Tracks.select { Tracks.id eq tid }.singleOrNull() } ?: run {
+                call.respond(HttpStatusCode.NotFound, ErrorResponse("Track not found"))
+                return@delete
+            }
+            if (track[Tracks.userId] != uid) {
+                call.respond(HttpStatusCode.Forbidden, ErrorResponse("You do not own this track"))
+                return@delete
+            }
             transaction {
-                Tracks.deleteWhere { with(SqlExpressionBuilder) { val a: Op<Boolean> = Tracks.id eq tid; val b: Op<Boolean> = Tracks.userId eq uid; a and b } }
+                PlaylistTracks.deleteWhere { with(SqlExpressionBuilder) { PlaylistTracks.trackId eq tid } }
+                Likes.deleteWhere { with(SqlExpressionBuilder) { Likes.trackId eq tid } }
+                Comments.deleteWhere { with(SqlExpressionBuilder) { Comments.trackId eq tid } }
+                PlayHistory.deleteWhere { with(SqlExpressionBuilder) { PlayHistory.trackId eq tid } }
+                AiGenerationJobs.update({ AiGenerationJobs.trackId eq tid }) {
+                    it[AiGenerationJobs.trackId] = null
+                    it[AiGenerationJobs.status] = "SUCCEEDED"
+                    it[AiGenerationJobs.updatedAt] = System.currentTimeMillis()
+                }
+                Tracks.deleteWhere { with(SqlExpressionBuilder) { Tracks.id eq tid } }
             }
             call.respond(SuccessResponse("Deleted"))
         }
@@ -231,49 +263,60 @@ fun Application.trackRoutes() {
 
         post("/api/v1/music/{id}/like") {
             val (uid, _) = call.requireAuth() ?: return@post
-            val tid = call.parameters["id"]?.toIntOrNull() ?: return@post
-            val exists = transaction { Tracks.select { Tracks.id eq tid }.count() > 0 }
-            if (!exists) {
-                call.respond(HttpStatusCode.NotFound, ErrorResponse("Track not found"))
+            val tid = call.parameters["id"]?.toIntOrNull() ?: run {
+                call.respond(HttpStatusCode.BadRequest, ErrorResponse("Invalid id"))
                 return@post
             }
-            try {
-                transaction {
+            val liked = transaction {
+                Tracks.select { Tracks.id eq tid }.forUpdate().singleOrNull()
+                    ?: return@transaction null
+                val existing = Likes.select {
+                    (Likes.userId eq uid) and (Likes.trackId eq tid)
+                }.count() > 0
+                if (existing) {
+                    Likes.deleteWhere {
+                        with(SqlExpressionBuilder) {
+                            (Likes.userId eq uid) and (Likes.trackId eq tid)
+                        }
+                    }
+                } else {
                     Likes.insert {
                         it[Likes.userId] = uid
                         it[Likes.trackId] = tid
                         it[Likes.createdAt] = System.currentTimeMillis()
                     }
-                    Tracks.update({ Tracks.id eq tid }) {
-                        with(SqlExpressionBuilder) {
-                            it[Tracks.likeCount] = Tracks.likeCount + 1
-                        }
-                    }
                 }
+                val actualCount = Likes.select { Likes.trackId eq tid }.count().toInt()
+                Tracks.update({ Tracks.id eq tid }) { it[Tracks.likeCount] = actualCount }
+                !existing
+            }
+            if (liked == null) {
+                call.respond(HttpStatusCode.NotFound, ErrorResponse("Track not found"))
+                return@post
+            } else if (liked) {
                 logger.info("Like added: userId={}, trackId={}", uid, tid)
                 call.respond(SuccessResponse("Liked"))
-            } catch (e: Exception) {
-                transaction {
-                    Likes.deleteWhere { with(SqlExpressionBuilder) { val a: Op<Boolean> = Likes.userId eq uid; val b: Op<Boolean> = Likes.trackId eq tid; a and b } }
-                    Tracks.update({ Tracks.id eq tid }) {
-                        with(SqlExpressionBuilder) {
-                            it[Tracks.likeCount] = Tracks.likeCount - 1
-                        }
-                    }
-                }
+            } else {
                 logger.info("Like removed: userId={}, trackId={}", uid, tid)
                 call.respond(SuccessResponse("Unliked"))
             }
         }
 
         post("/api/v1/music/{id}/view") {
-            val tid = call.parameters["id"]?.toIntOrNull() ?: return@post
-            transaction {
+            val tid = call.parameters["id"]?.toIntOrNull() ?: run {
+                call.respond(HttpStatusCode.BadRequest, ErrorResponse("Invalid id"))
+                return@post
+            }
+            val updated = transaction {
                 Tracks.update({ Tracks.id eq tid }) {
                     with(SqlExpressionBuilder) {
                         it[Tracks.playCount] = Tracks.playCount + 1
                     }
                 }
+            }
+            if (updated == 0) {
+                call.respond(HttpStatusCode.NotFound, ErrorResponse("Track not found"))
+                return@post
             }
             val (userId, _) = call.optionalAuth()
             if (userId != null) {
@@ -289,15 +332,17 @@ fun Application.trackRoutes() {
         }
 
         get("/api/v1/music/{id}/comments") {
-            val tid = call.parameters["id"]?.toIntOrNull() ?: return@get
+            val tid = call.parameters["id"]?.toIntOrNull() ?: run {
+                call.respond(HttpStatusCode.BadRequest, ErrorResponse("Invalid id"))
+                return@get
+            }
             val comments = transaction {
-                Comments.select { Comments.trackId eq tid }
+                (Comments innerJoin Users).select { Comments.trackId eq tid }
                     .orderBy(Comments.createdAt, SortOrder.DESC)
                     .map { row ->
-                        val cu = Users.select { Users.id eq row[Comments.userId] }.single()
                         CommentResponse(
                             id = row[Comments.id], userId = row[Comments.userId],
-                            username = cu[Users.username], content = row[Comments.content],
+                            username = row[Users.username], content = row[Comments.content],
                             createdAt = row[Comments.createdAt]
                         )
                     }
@@ -314,7 +359,8 @@ fun Application.trackRoutes() {
                 return@post
             }
             val req = call.receive<CommentRequest>()
-            if (req.content.length !in 1..500) {
+            val content = req.content.trim()
+            if (content.length !in 1..500) {
                 call.respond(HttpStatusCode.BadRequest, ErrorResponse("Comment content must be 1-500 characters"))
                 return@post
             }
@@ -322,7 +368,7 @@ fun Application.trackRoutes() {
                 Comments.insert {
                     it[Comments.userId] = uid
                     it[Comments.trackId] = tid
-                    it[Comments.content] = req.content
+                    it[Comments.content] = content
                     it[Comments.createdAt] = System.currentTimeMillis()
                 }
                 Tracks.update({ Tracks.id eq tid }) {
@@ -336,7 +382,15 @@ fun Application.trackRoutes() {
         }
 
         get("/api/v1/user/{id}/history") {
-            val uid = call.parameters["id"]?.toIntOrNull() ?: return@get
+            val (authenticatedUserId, _) = call.requireAuth() ?: return@get
+            val uid = call.parameters["id"]?.toIntOrNull() ?: run {
+                call.respond(HttpStatusCode.BadRequest, ErrorResponse("Invalid user id"))
+                return@get
+            }
+            if (uid != authenticatedUserId) {
+                call.respond(HttpStatusCode.Forbidden, ErrorResponse("Play history is private"))
+                return@get
+            }
             val history = transaction {
                 (PlayHistory innerJoin Tracks innerJoin Users)
                     .select { PlayHistory.userId eq uid }
@@ -367,6 +421,59 @@ fun Application.trackRoutes() {
             call.respond(tracks)
         }
     }
+}
+
+private const val MAX_AUDIO_UPLOAD_BYTES = 50L * 1024L * 1024L
+private val allowedAudioExtensions = setOf("mp3", "wav", "ogg", "flac", "aac", "m4a")
+
+private class UploadValidationException(
+    override val message: String,
+    val status: HttpStatusCode = HttpStatusCode.BadRequest
+) : Exception(message)
+
+@Suppress("DEPRECATION")
+private fun saveUploadedAudio(part: PartData.FileItem): String {
+    val originalName = part.originalFileName?.trim().orEmpty()
+    val extension = originalName.substringAfterLast('.', "").lowercase()
+    if (extension !in allowedAudioExtensions) {
+        throw UploadValidationException("Supported audio formats: ${allowedAudioExtensions.joinToString()}")
+    }
+    val baseName = originalName.substringBeforeLast('.')
+        .replace(Regex("[^A-Za-z0-9._-]"), "_")
+        .trim('_', '.')
+        .take(80)
+        .ifBlank { "audio" }
+    val savedName = "${UUID.randomUUID()}_${baseName}.$extension"
+    val uploadDir = File("uploads").apply { mkdirs() }
+    val target = File(uploadDir, savedName)
+    var copied = 0L
+    try {
+        part.streamProvider().use { input ->
+            target.outputStream().use { output ->
+                val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
+                while (true) {
+                    val count = input.read(buffer)
+                    if (count < 0) break
+                    copied += count
+                    if (copied > MAX_AUDIO_UPLOAD_BYTES) {
+                        throw UploadValidationException(
+                            "Audio file must be at most 50 MB",
+                            HttpStatusCode.PayloadTooLarge
+                        )
+                    }
+                    output.write(buffer, 0, count)
+                }
+            }
+        }
+    } catch (e: Exception) {
+        target.delete()
+        throw e
+    }
+    if (copied == 0L) {
+        target.delete()
+        throw UploadValidationException("Audio file is empty")
+    }
+    return target.invariantSeparatorsPath
 }
 
 fun ResultRow.toTrackResponse(username: String = ""): TrackResponse {

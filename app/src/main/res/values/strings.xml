@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">AI 音乐</string>
+    <string name="app_name">织音 WeaveTone</string>
 
     <string name="tab_discover">发现</string>
     <string name="tab_library">音乐库</string>
@@ -73,7 +73,7 @@
 
     <string name="login_create_account">创建账号</string>
     <string name="login_welcome_back">欢迎回来</string>
-    <string name="login_register_subtitle">注册加入 AI 音乐社区</string>
+    <string name="login_register_subtitle">注册加入织音社区</string>
     <string name="login_login_subtitle">登录继续你的音乐之旅</string>
     <string name="login_username">用户名</string>
     <string name="login_email_optional">邮箱（选填）</string>

@@ -2,7 +2,7 @@
 
 ## 项目名称
 
-**AI Music｜AI 音乐创作与社区平台**
+**织音 WeaveTone｜AI 音乐创作与社区平台**
 
 ## 一句话介绍
 
@@ -10,11 +10,11 @@
 
 ## 简历版（推荐）
 
-- 使用 **Kotlin + Jetpack Compose + Ktor** 独立完成 Android 全栈 AI 音乐社区，覆盖登录、生成、试听、发布、点赞评论、收藏与歌单等核心闭环。
-- 设计 `MusicGenerationProvider` 策略接口，统一适配 **MiniMax Music、Replicate MusicGen 与离线 Fake Provider**，将供应商切换从业务路由中解耦。
-- 设计持久化 AI 任务模型与 `PENDING/RUNNING/SUCCEEDED/FAILED/PUBLISHED` 状态机，实现轮询进度、失败可观测、应用重进恢复及生成音频服务端落盘。
-- 将第三方 API Key 收口至 Ktor 环境变量，Android 仅持有 JWT 并访问自有后端；结合 H2 演示模式，使项目无需外部账号即可本地运行。
-- 基于 **Media3 + MediaSessionService** 实现后台播放，使用 **Room/MediaStore** 管理本地歌曲，并通过 Retrofit、Hilt、Coroutines 构建分层数据流。
+- 使用 **Kotlin + Jetpack Compose + Ktor** 独立完成 Android 全栈 AI 音乐社区，覆盖登录、AI 生成、试听发布、点赞评论、歌单与后台播放等完整闭环。
+- 设计 `MusicGenerationProvider` 策略接口，统一适配 **MiniMax、Replicate 与离线 Fake Provider**；用五态持久化任务模型支持轮询、失败记录和应用重进恢复，模型密钥仅保留在服务端。
+- 基于 JWT 实现资源级鉴权，修复私有歌单泄露、跨用户删改与播放历史越权；利用联合主键、行锁和事务保证点赞计数、关系清理及 AI 发布幂等一致。
+- 使用 **Docker Compose** 编排 Ktor、PostgreSQL、健康检查和持久化卷，实现一条命令部署；GitHub Actions 自动执行 Android/后端测试并拉起完整容器栈探活。
+- 建立 **19 个自动化用例**，覆盖 Provider 音频输出、JWT 防篡改、歌单越权、点赞/关注一致性、AI 重复发布和 Android Repository/URL 逻辑，形成可复现测试矩阵。
 
 ## 技术关键词
 

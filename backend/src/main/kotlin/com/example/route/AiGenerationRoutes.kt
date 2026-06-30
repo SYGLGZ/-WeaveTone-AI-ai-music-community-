@@ -170,32 +170,36 @@ fun Application.aiGenerationRoutes() {
                 return@post
             }
             val req = call.receive<AiPublishRequest>()
-            val row = findOwnedJob(jobId, uid) ?: run {
-                call.respond(HttpStatusCode.NotFound, ErrorResponse("Generation job not found"))
+            val description = req.description?.trim()
+            val tags = req.tags?.map { it.trim() }?.filter { it.isNotEmpty() }?.joinToString(",")
+            if (description != null && description.length > 2_000) {
+                call.respond(HttpStatusCode.BadRequest, ErrorResponse("Description must be at most 2000 characters"))
                 return@post
             }
-            val status = row[AiGenerationJobs.status]
-            if (status != AiGenerationStatus.SUCCEEDED.name && status != AiGenerationStatus.PUBLISHED.name) {
-                call.respond(HttpStatusCode.BadRequest, ErrorResponse("Only succeeded generations can be published"))
+            if (tags != null && tags.length > 500) {
+                call.respond(HttpStatusCode.BadRequest, ErrorResponse("Tags must be at most 500 characters"))
                 return@post
-            }
-            val audioPath = row[AiGenerationJobs.audioFilePath] ?: run {
-                call.respond(HttpStatusCode.BadRequest, ErrorResponse("Generated audio is not available"))
-                return@post
-            }
-            row[AiGenerationJobs.trackId]?.let { existingTrackId ->
-                val existing = findTrack(existingTrackId)
-                if (existing != null) {
-                    call.respond(existing)
-                    return@post
-                }
             }
 
-            val title = req.title?.trim()?.takeIf { it.isNotBlank() }?.take(200)
-                ?: "AI生成 - ${row[AiGenerationJobs.prompt].take(24)}"
-            val now = System.currentTimeMillis()
-            val trackId = transaction {
-                Tracks.insert {
+            val outcome = transaction {
+                val row = AiGenerationJobs.select {
+                    (AiGenerationJobs.id eq jobId) and (AiGenerationJobs.userId eq uid)
+                }.forUpdate().singleOrNull() ?: return@transaction PublishOutcome.JobNotFound
+                val status = row[AiGenerationJobs.status]
+                if (status != AiGenerationStatus.SUCCEEDED.name && status != AiGenerationStatus.PUBLISHED.name) {
+                    return@transaction PublishOutcome.NotReady
+                }
+                val audioPath = row[AiGenerationJobs.audioFilePath]
+                    ?: return@transaction PublishOutcome.AudioMissing
+                row[AiGenerationJobs.trackId]?.let { existingTrackId ->
+                    if (Tracks.select { Tracks.id eq existingTrackId }.count() > 0) {
+                        return@transaction PublishOutcome.Track(existingTrackId, false)
+                    }
+                }
+                val title = req.title?.trim()?.takeIf { it.isNotBlank() }?.take(200)
+                    ?: "AI生成 - ${row[AiGenerationJobs.prompt].take(24)}"
+                val now = System.currentTimeMillis()
+                val trackId = Tracks.insert {
                     it[Tracks.userId] = uid
                     it[Tracks.title] = title
                     it[Tracks.artist] = uname
@@ -203,27 +207,38 @@ fun Application.aiGenerationRoutes() {
                     it[Tracks.bpm] = row[AiGenerationJobs.bpm]
                     it[Tracks.durationSec] = row[AiGenerationJobs.durationSec]
                     it[Tracks.fileUrl] = audioPath
-                    it[Tracks.description] = req.description
-                    it[Tracks.tags] = req.tags?.joinToString(",")
+                    it[Tracks.description] = description
+                    it[Tracks.tags] = tags
                     it[Tracks.isAiGenerated] = true
                     it[Tracks.aiPrompt] = row[AiGenerationJobs.prompt]
                     it[Tracks.createdAt] = now
                 } get Tracks.id
-            }
-            transaction {
                 AiGenerationJobs.update({ AiGenerationJobs.id eq jobId }) {
                     it[AiGenerationJobs.status] = AiGenerationStatus.PUBLISHED.name
                     it[AiGenerationJobs.trackId] = trackId
-                    it[AiGenerationJobs.updatedAt] = System.currentTimeMillis()
+                    it[AiGenerationJobs.updatedAt] = now
+                }
+                PublishOutcome.Track(trackId, true)
+            }
+            when (outcome) {
+                PublishOutcome.JobNotFound -> call.respond(HttpStatusCode.NotFound, ErrorResponse("Generation job not found"))
+                PublishOutcome.NotReady -> call.respond(HttpStatusCode.BadRequest, ErrorResponse("Only succeeded generations can be published"))
+                PublishOutcome.AudioMissing -> call.respond(HttpStatusCode.BadRequest, ErrorResponse("Generated audio is not available"))
+                is PublishOutcome.Track -> {
+                    val statusCode = if (outcome.created) HttpStatusCode.Created else HttpStatusCode.OK
+                    val published = findTrack(outcome.id)
+                    call.respond(statusCode, published ?: mapOf("id" to outcome.id))
                 }
             }
-            val published = findTrack(trackId) ?: run {
-                call.respond(HttpStatusCode.Created, mapOf("id" to trackId))
-                return@post
-            }
-            call.respond(HttpStatusCode.Created, published)
         }
     }
+}
+
+private sealed interface PublishOutcome {
+    data object JobNotFound : PublishOutcome
+    data object NotReady : PublishOutcome
+    data object AudioMissing : PublishOutcome
+    data class Track(val id: Int, val created: Boolean) : PublishOutcome
 }
 
 private fun findOwnedJob(jobId: Int, userId: Int): ResultRow? = transaction {

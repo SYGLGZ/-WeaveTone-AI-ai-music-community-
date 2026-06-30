@@ -1,5 +1,7 @@
 package com.example.route
 
+import com.example.config.DatabaseFactory
+import io.ktor.http.HttpStatusCode
 import io.ktor.server.application.Application
 import io.ktor.server.response.respond
 import io.ktor.server.routing.get
@@ -26,6 +28,13 @@ fun Application.systemRoutes() {
         }
         get("/health") {
             call.respond(HealthResponse("UP", System.currentTimeMillis()))
+        }
+        get("/ready") {
+            val ready = DatabaseFactory.isReady()
+            call.respond(
+                if (ready) HttpStatusCode.OK else HttpStatusCode.ServiceUnavailable,
+                HealthResponse(if (ready) "UP" else "DOWN", System.currentTimeMillis())
+            )
         }
     }
 }

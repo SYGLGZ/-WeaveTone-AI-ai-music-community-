@@ -184,7 +184,7 @@ fun ProfileScreen(
         MenuCard {
             ProfileMenuItemRow(Icons.Filled.Settings, "应用设置", "网络、播放与应用信息", onNavigateToSettings)
             ProfileDivider()
-            ProfileMenuItemRow(Icons.Filled.Info, "关于", "AI Music 课设项目") {}
+            ProfileMenuItemRow(Icons.Filled.Info, "关于", "织音 WeaveTone 项目") {}
         }
     }
 }

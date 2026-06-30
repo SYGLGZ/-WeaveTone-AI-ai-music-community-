@@ -1,6 +1,6 @@
-# 织音 WeaveTone——AI音乐创作与社区平台
+# 织音 WeaveTone — AI 音乐创作与社区平台
 
-一个面向 Android 的全栈 AI 音乐项目：用户可以用自然语言提交音乐生成任务，试听生成结果并发布到社区，也可以上传本地作品、点赞评论、收藏和维护歌单。
+织音取“编织声音”与“寻找知音”之意，是一个面向 Android 的全栈 AI 音乐项目：用户可以用自然语言提交音乐生成任务，试听生成结果并发布到社区，也可以上传本地作品、点赞评论、收藏和维护歌单。
 
 项目不是“在客户端直接调用一次 AI API”的演示，而是实现了可替换的模型 Provider、持久化任务状态、服务端音频落盘和社区发布闭环。仓库内置 Fake Provider，无需 API Key 也能完整演示业务流程。
 
@@ -60,7 +60,21 @@ flowchart LR
 
 更详细的设计见 [架构说明](docs/ARCHITECTURE.md) 和 [API 概览](docs/API.md)。
 
-## 5 分钟运行
+## Docker 一键部署
+
+后端、PostgreSQL、健康检查和持久化卷已编排在 `docker-compose.yml` 中。安装 Docker Desktop 后执行：
+
+```powershell
+Copy-Item .env.docker.example .env
+docker compose up --build -d --wait
+Invoke-RestMethod http://127.0.0.1:8080/ready
+```
+
+返回 `status: UP` 即表示应用和数据库均已就绪。默认使用 Fake Provider，无需模型 API Key；公开部署前必须修改 `.env` 中的数据库密码和 `JWT_SECRET`。停止服务使用 `docker compose down`，同时清空演示数据使用 `docker compose down -v`。
+
+CI 会真实构建镜像、启动 Compose 栈并请求 `/ready`，防止“一键部署”文档与代码漂移。完整配置、数据卷和故障排查见 [部署指南](docs/DEPLOYMENT.md)。
+
+## 5 分钟本地运行
 
 ### 1. 环境
 
@@ -162,4 +176,4 @@ docs/                    架构、API、演示与简历材料
 
 答辩或面试演示步骤见 [DEMO.md](docs/DEMO.md)，可直接用于简历的项目描述见 [RESUME.md](docs/RESUME.md)。
 
-准备公开仓库时，请按 [GitHub 发布清单](docs/RELEASE_CHECKLIST.md) 完成许可证、演示视频与 Release；安全约定见 [SECURITY.md](SECURITY.md)。
+自动化测试覆盖 19 个核心用例，测试分层与权限/一致性矩阵见 [TESTING.md](docs/TESTING.md)。推送 `v1.0.0-demo` Tag 会自动测试并发布 APK、后端分发包和 SHA-256 校验文件；准备公开仓库时请核对 [GitHub 发布清单](docs/RELEASE_CHECKLIST.md)、[Release Notes](docs/RELEASE_NOTES_v1.0.0-demo.md) 与 [CHANGELOG](CHANGELOG.md)。安全约定见 [SECURITY.md](SECURITY.md)。

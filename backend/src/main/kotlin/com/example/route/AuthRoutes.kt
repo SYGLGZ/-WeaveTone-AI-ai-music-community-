@@ -22,7 +22,9 @@ import io.ktor.server.routing.routing
 import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.transactions.transaction
+import org.jetbrains.exposed.exceptions.ExposedSQLException
 import org.slf4j.LoggerFactory
+import java.util.UUID
 
 private val logger = LoggerFactory.getLogger("AuthRoutes")
 private val usernameRegex = Regex("^[\\p{L}\\p{N}_-]+$")
@@ -58,15 +60,25 @@ fun Application.authRoutes() {
 
             val hash = BCrypt.withDefaults().hashToString(12, req.password.toCharArray())
             val email = req.email?.trim()?.takeIf { it.isNotBlank() }
-                ?: "user_${System.currentTimeMillis()}@local.invalid"
+                ?: "user_${UUID.randomUUID()}@local.invalid"
 
-            val uid = transaction {
-                Users.insert {
-                    it[Users.username] = username
-                    it[Users.email] = email
-                    it[Users.password] = hash
-                    it[Users.createdAt] = System.currentTimeMillis()
-                } get Users.id
+            if (email.length > 255 || (req.email != null && !emailRegex.matches(email))) {
+                call.respond(HttpStatusCode.BadRequest, ErrorResponse("邮箱格式不正确"))
+                return@post
+            }
+
+            val uid = try {
+                transaction {
+                    Users.insert {
+                        it[Users.username] = username
+                        it[Users.email] = email
+                        it[Users.password] = hash
+                        it[Users.createdAt] = System.currentTimeMillis()
+                    } get Users.id
+                }
+            } catch (_: ExposedSQLException) {
+                call.respond(HttpStatusCode.Conflict, ErrorResponse("用户名或邮箱已存在"))
+                return@post
             }
 
             val token = JwtConfig.generateToken(uid, username)
@@ -111,3 +123,5 @@ fun Application.authRoutes() {
         }
     }
 }
+
+private val emailRegex = Regex("^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$")

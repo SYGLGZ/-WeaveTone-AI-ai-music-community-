@@ -12,6 +12,7 @@ Authorization: Bearer <jwt>
 | --- | --- | --- |
 | GET | `/` | 服务名称、版本与运行状态 |
 | GET | `/health` | 轻量健康检查 |
+| GET | `/ready` | 数据库就绪检查，供容器编排探活 |
 
 ## 认证
 
@@ -56,6 +57,7 @@ Authorization: Bearer <jwt>
 | GET | `/api/v1/music/liked/mine` | 我的收藏 |
 | GET | `/api/v1/music/{id}/comments` | 评论列表 |
 | POST | `/api/v1/music/{id}/comment` | 发布评论 |
+| DELETE | `/api/v1/music/{id}` | 删除本人作品及关联关系 |
 
 ## 歌单
 
@@ -68,6 +70,8 @@ Authorization: Bearer <jwt>
 | POST | `/api/v1/playlist/{id}/add` | 添加曲目 |
 | POST | `/api/v1/playlist/{id}/remove` | 移除曲目 |
 | DELETE | `/api/v1/playlist/{id}` | 删除本人歌单 |
+
+私有歌单仅所有者可读取详情和曲目；歌单增删曲目、删除作品、播放历史与 AI 任务均执行资源所有权校验。越权访问返回 `403`，不存在的资源返回 `404`。
 
 错误响应统一使用：
 

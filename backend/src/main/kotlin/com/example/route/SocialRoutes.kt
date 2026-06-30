@@ -18,7 +18,10 @@ import org.jetbrains.exposed.sql.transactions.transaction
 fun Application.socialRoutes() {
     routing {
         get("/api/v1/user/{id}/profile") {
-            val pid = call.parameters["id"]?.toIntOrNull() ?: return@get
+            val pid = call.parameters["id"]?.toIntOrNull() ?: run {
+                call.respond(HttpStatusCode.BadRequest, ErrorResponse("Invalid user id"))
+                return@get
+            }
             val profile = transaction {
                 val user = Users.select { Users.id eq pid }.singleOrNull() ?: return@transaction null
                 val tc = Tracks.select { Tracks.userId eq pid }.count().toInt()
@@ -39,30 +42,51 @@ fun Application.socialRoutes() {
 
         post("/api/v1/user/{id}/follow") {
             val (uid, _) = call.requireAuth() ?: return@post
-            val targetId = call.parameters["id"]?.toIntOrNull() ?: return@post
+            val targetId = call.parameters["id"]?.toIntOrNull() ?: run {
+                call.respond(HttpStatusCode.BadRequest, ErrorResponse("Invalid user id"))
+                return@post
+            }
             if (uid == targetId) {
                 call.respond(HttpStatusCode.BadRequest, ErrorResponse("Cannot follow yourself"))
                 return@post
             }
-            try {
-                transaction {
+            val result = transaction {
+                Users.select { Users.id eq targetId }.forUpdate().singleOrNull()
+                    ?: return@transaction FollowResult.USER_NOT_FOUND
+                val exists = Follows.select {
+                    (Follows.followerId eq uid) and (Follows.followedId eq targetId)
+                }.count() > 0
+                if (exists) {
+                    Follows.deleteWhere {
+                        with(SqlExpressionBuilder) {
+                            (Follows.followerId eq uid) and (Follows.followedId eq targetId)
+                        }
+                    }
+                    FollowResult.UNFOLLOWED
+                } else {
                     Follows.insert {
                         it[Follows.followerId] = uid
                         it[Follows.followedId] = targetId
                         it[Follows.createdAt] = System.currentTimeMillis()
                     }
+                    FollowResult.FOLLOWED
                 }
-                call.respond(SuccessResponse("Followed"))
-            } catch (e: Exception) {
-                transaction {
-                    Follows.deleteWhere { with(SqlExpressionBuilder) { val a: Op<Boolean> = Follows.followerId eq uid; val b: Op<Boolean> = Follows.followedId eq targetId; a and b } }
+            }
+            when (result) {
+                FollowResult.USER_NOT_FOUND -> {
+                    call.respond(HttpStatusCode.NotFound, ErrorResponse("User not found"))
+                    return@post
                 }
-                call.respond(SuccessResponse("Unfollowed"))
+                FollowResult.FOLLOWED -> call.respond(SuccessResponse("Followed"))
+                FollowResult.UNFOLLOWED -> call.respond(SuccessResponse("Unfollowed"))
             }
         }
 
         get("/api/v1/user/{id}/followers") {
-            val targetId = call.parameters["id"]?.toIntOrNull() ?: return@get
+            val targetId = call.parameters["id"]?.toIntOrNull() ?: run {
+                call.respond(HttpStatusCode.BadRequest, ErrorResponse("Invalid user id"))
+                return@get
+            }
             val followers = transaction {
                 (Follows innerJoin Users).select { Follows.followedId eq targetId }
                     .map { UserProfileResponse(
@@ -75,3 +99,5 @@ fun Application.socialRoutes() {
         }
     }
 }
+
+private enum class FollowResult { FOLLOWED, UNFOLLOWED, USER_NOT_FOUND }

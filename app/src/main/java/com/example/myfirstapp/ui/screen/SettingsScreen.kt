@@ -51,7 +51,7 @@ fun SettingsScreen(onBack: () -> Unit) {
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(stringResource(R.string.settings_app_name), style = MaterialTheme.typography.bodyMedium, color = TextSecondary)
-                    Text("AI音乐", style = MaterialTheme.typography.bodyMedium, color = TextPrimary)
+                    Text(stringResource(R.string.app_name), style = MaterialTheme.typography.bodyMedium, color = TextPrimary)
                 }
                 Box(Modifier.fillMaxWidth().height(0.5.dp).background(Divider))
                 Row(
@@ -87,7 +87,7 @@ fun SettingsScreen(onBack: () -> Unit) {
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(stringResource(R.string.settings_ai_model), style = MaterialTheme.typography.bodyMedium, color = TextSecondary)
-                    Text("ACE-Step / Magenta RT", style = MaterialTheme.typography.bodyMedium, color = TextPrimary)
+                    Text("MiniMax / Replicate / Fake", style = MaterialTheme.typography.bodyMedium, color = TextPrimary)
                 }
             }
             Spacer(Modifier.height(24.dp))

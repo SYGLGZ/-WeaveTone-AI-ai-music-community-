@@ -1,0 +1,41 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-aimusic}
+      POSTGRES_USER: ${POSTGRES_USER:-aimusic}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-aimusic_dev_password}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  backend:
+    build:
+      context: ./backend
+    environment:
+      PORT: 8080
+      DB_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-aimusic}
+      DB_USER: ${POSTGRES_USER:-aimusic}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-aimusic_dev_password}
+      JWT_SECRET: ${JWT_SECRET:-development-only-change-before-deploying}
+      AI_PROVIDER: ${AI_PROVIDER:-fake}
+      MINIMAX_API_KEY: ${MINIMAX_API_KEY:-}
+      MINIMAX_MODEL: ${MINIMAX_MODEL:-music-2.6-free}
+      REPLICATE_API_TOKEN: ${REPLICATE_API_TOKEN:-}
+    ports:
+      - "${BACKEND_PORT:-8080}:8080"
+    volumes:
+      - audio_data:/app/uploads
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  audio_data:

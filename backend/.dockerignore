@@ -1,0 +1,10 @@
+.gradle
+.kotlin
+.idea
+build
+data
+uploads
+*.iml
+*.log
+.env
+run_backend_*_local.bat

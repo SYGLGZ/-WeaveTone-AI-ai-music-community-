@@ -12,6 +12,7 @@
 package com.example.route
 
 import com.example.middleware.requireAuth
+import com.example.middleware.optionalAuth
 import com.example.model.*
 import io.ktor.http.*
 import io.ktor.server.application.*
@@ -19,6 +20,7 @@ import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import org.jetbrains.exposed.sql.*
+import org.jetbrains.exposed.exceptions.ExposedSQLException
 import org.jetbrains.exposed.sql.transactions.transaction
 
 fun Application.playlistRoutes() {
@@ -26,10 +28,15 @@ fun Application.playlistRoutes() {
         post("/api/v1/playlist") {
             val (uid, _) = call.requireAuth() ?: return@post
             val req = call.receive<PlaylistRequest>()
+            val name = req.name.trim()
+            if (name.length !in 1..100) {
+                call.respond(HttpStatusCode.BadRequest, ErrorResponse("Playlist name must be 1-100 characters"))
+                return@post
+            }
             val pid = transaction {
                 Playlists.insert {
                     it[Playlists.userId] = uid
-                    it[Playlists.name] = req.name
+                    it[Playlists.name] = name
                     it[Playlists.coverUrl] = req.coverUrl
                     it[Playlists.isPublic] = req.isPublic
                     it[Playlists.createdAt] = System.currentTimeMillis()
@@ -92,10 +99,18 @@ fun Application.playlistRoutes() {
         }
 
         get("/api/v1/playlist/{id}") {
-            val pid = call.parameters["id"]?.toIntOrNull() ?: return@get
+            val pid = call.parameters["id"]?.toIntOrNull() ?: run {
+                call.respond(HttpStatusCode.BadRequest, ErrorResponse("Invalid playlist id"))
+                return@get
+            }
+            val (viewerId, _) = call.optionalAuth()
             val playlist = transaction {
                 (Playlists innerJoin Users).select { Playlists.id eq pid }.singleOrNull()
             } ?: run { call.respond(HttpStatusCode.NotFound, ErrorResponse("Not found")); return@get }
+            if (!playlist[Playlists.isPublic] && playlist[Playlists.userId] != viewerId) {
+                call.respond(HttpStatusCode.Forbidden, ErrorResponse("This playlist is private"))
+                return@get
+            }
             val cnt = transaction { PlaylistTracks.select { PlaylistTracks.playlistId eq pid }.count().toInt() }
             call.respond(PlaylistResponse(
                 id = playlist[Playlists.id], userId = playlist[Playlists.userId],
@@ -106,7 +121,21 @@ fun Application.playlistRoutes() {
         }
 
         get("/api/v1/playlist/{id}/tracks") {
-            val pid = call.parameters["id"]?.toIntOrNull() ?: return@get
+            val pid = call.parameters["id"]?.toIntOrNull() ?: run {
+                call.respond(HttpStatusCode.BadRequest, ErrorResponse("Invalid playlist id"))
+                return@get
+            }
+            val (viewerId, _) = call.optionalAuth()
+            val playlist = transaction {
+                Playlists.select { Playlists.id eq pid }.singleOrNull()
+            } ?: run {
+                call.respond(HttpStatusCode.NotFound, ErrorResponse("Playlist not found"))
+                return@get
+            }
+            if (!playlist[Playlists.isPublic] && playlist[Playlists.userId] != viewerId) {
+                call.respond(HttpStatusCode.Forbidden, ErrorResponse("This playlist is private"))
+                return@get
+            }
             val tracks = transaction {
                 (PlaylistTracks innerJoin Tracks innerJoin Users).select { PlaylistTracks.playlistId eq pid }
                     .orderBy(PlaylistTracks.position)
@@ -117,7 +146,10 @@ fun Application.playlistRoutes() {
 
         post("/api/v1/playlist/{id}/add") {
             val (uid, _) = call.requireAuth() ?: return@post
-            val pid = call.parameters["id"]?.toIntOrNull() ?: return@post
+            val pid = call.parameters["id"]?.toIntOrNull() ?: run {
+                call.respond(HttpStatusCode.BadRequest, ErrorResponse("Invalid playlist id"))
+                return@post
+            }
             val playlist = transaction {
                 Playlists.select { Playlists.id eq pid }.singleOrNull()
             } ?: run {
@@ -129,34 +161,107 @@ fun Application.playlistRoutes() {
                 return@post
             }
             val req = call.receive<Map<String, Int>>()
-            val tid = req["trackId"] ?: return@post
-            transaction {
-                PlaylistTracks.insert {
-                    it[PlaylistTracks.playlistId] = pid
-                    it[PlaylistTracks.trackId] = tid
+            val tid = req["trackId"] ?: run {
+                call.respond(HttpStatusCode.BadRequest, ErrorResponse("trackId is required"))
+                return@post
+            }
+            val result = try {
+                transaction {
+                    Playlists.select { Playlists.id eq pid }.forUpdate().single()
+                    if (Tracks.select { Tracks.id eq tid }.count() == 0L) return@transaction AddTrackResult.TRACK_NOT_FOUND
+                    val duplicate = PlaylistTracks.select {
+                        (PlaylistTracks.playlistId eq pid) and (PlaylistTracks.trackId eq tid)
+                    }.count() > 0
+                    if (duplicate) return@transaction AddTrackResult.ALREADY_EXISTS
+                    val maxPosition = PlaylistTracks.position.max()
+                    val nextPosition = PlaylistTracks
+                        .slice(maxPosition)
+                        .select { PlaylistTracks.playlistId eq pid }
+                        .singleOrNull()
+                        ?.get(maxPosition)
+                        ?.plus(1) ?: 0
+                    PlaylistTracks.insert {
+                        it[PlaylistTracks.playlistId] = pid
+                        it[PlaylistTracks.trackId] = tid
+                        it[PlaylistTracks.position] = nextPosition
+                    }
+                    AddTrackResult.ADDED
                 }
+            } catch (_: ExposedSQLException) {
+                AddTrackResult.ALREADY_EXISTS
+            }
+            when (result) {
+                AddTrackResult.TRACK_NOT_FOUND -> {
+                    call.respond(HttpStatusCode.NotFound, ErrorResponse("Track not found"))
+                    return@post
+                }
+                AddTrackResult.ALREADY_EXISTS -> {
+                    call.respond(HttpStatusCode.Conflict, ErrorResponse("Track is already in this playlist"))
+                    return@post
+                }
+                AddTrackResult.ADDED -> Unit
             }
             call.respond(SuccessResponse("Track added"))
         }
 
         post("/api/v1/playlist/{id}/remove") {
-            call.requireAuth() ?: return@post
-            val pid = call.parameters["id"]?.toIntOrNull() ?: return@post
+            val (uid, _) = call.requireAuth() ?: return@post
+            val pid = call.parameters["id"]?.toIntOrNull() ?: run {
+                call.respond(HttpStatusCode.BadRequest, ErrorResponse("Invalid playlist id"))
+                return@post
+            }
+            val playlist = transaction {
+                Playlists.select { Playlists.id eq pid }.singleOrNull()
+            } ?: run {
+                call.respond(HttpStatusCode.NotFound, ErrorResponse("Playlist not found"))
+                return@post
+            }
+            if (playlist[Playlists.userId] != uid) {
+                call.respond(HttpStatusCode.Forbidden, ErrorResponse("You do not own this playlist"))
+                return@post
+            }
             val req = call.receive<Map<String, Int>>()
-            val tid = req["trackId"] ?: return@post
-            transaction {
+            val tid = req["trackId"] ?: run {
+                call.respond(HttpStatusCode.BadRequest, ErrorResponse("trackId is required"))
+                return@post
+            }
+            val deleted = transaction {
                 PlaylistTracks.deleteWhere { with(SqlExpressionBuilder) { val a: Op<Boolean> = PlaylistTracks.playlistId eq pid; val b: Op<Boolean> = PlaylistTracks.trackId eq tid; a and b } }
+            }
+            if (deleted == 0) {
+                call.respond(HttpStatusCode.NotFound, ErrorResponse("Track is not in this playlist"))
+                return@post
             }
             call.respond(SuccessResponse("Track removed"))
         }
 
         delete("/api/v1/playlist/{id}") {
             val (uid, _) = call.requireAuth() ?: return@delete
-            val pid = call.parameters["id"]?.toIntOrNull() ?: return@delete
+            val pid = call.parameters["id"]?.toIntOrNull() ?: run {
+                call.respond(HttpStatusCode.BadRequest, ErrorResponse("Invalid playlist id"))
+                return@delete
+            }
+            val playlist = transaction {
+                Playlists.select { Playlists.id eq pid }.singleOrNull()
+            } ?: run {
+                call.respond(HttpStatusCode.NotFound, ErrorResponse("Playlist not found"))
+                return@delete
+            }
+            if (playlist[Playlists.userId] != uid) {
+                call.respond(HttpStatusCode.Forbidden, ErrorResponse("You do not own this playlist"))
+                return@delete
+            }
             transaction {
-                Playlists.deleteWhere { with(SqlExpressionBuilder) { val a: Op<Boolean> = Playlists.id eq pid; val b: Op<Boolean> = Playlists.userId eq uid; a and b } }
+                PlaylistTracks.deleteWhere { with(SqlExpressionBuilder) { PlaylistTracks.playlistId eq pid } }
+                Playlists.deleteWhere { with(SqlExpressionBuilder) { Playlists.id eq pid } }
             }
             call.respond(SuccessResponse("Deleted"))
         }
     }
+}
+
+private enum class AddTrackResult {
+    ADDED,
+    ALREADY_EXISTS,
+    TRACK_NOT_FOUND
 }

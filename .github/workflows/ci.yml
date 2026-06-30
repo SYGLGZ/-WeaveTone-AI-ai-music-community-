@@ -36,3 +36,18 @@ jobs:
         run: chmod +x ./gradlew
       - name: Run backend tests
         run: ./gradlew test
+
+  docker-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build and start the full backend stack
+        run: docker compose up --build --detach --wait
+      - name: Verify readiness endpoint
+        run: curl --fail --retry 5 --retry-delay 2 http://127.0.0.1:8080/ready
+      - name: Show container logs on failure
+        if: failure()
+        run: docker compose logs
+      - name: Stop stack
+        if: always()
+        run: docker compose down --volumes
