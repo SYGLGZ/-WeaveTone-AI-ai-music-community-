@@ -2,7 +2,7 @@
 
 验收日期：2026-07-02
 
-验收对象：`main` 分支，基线提交 `058e31b` 加本报告所述 Docker 交付优化。
+验收对象：`main` 分支，工程验收提交 `a88bdc6`。
 
 ## 结论
 
@@ -64,7 +64,7 @@ Debug APK 构建成功：
 
 ## 4. GitHub Release 级交付
 
-GitHub Actions Run：<https://github.com/SYGLGZ/-WeaveTone-AI-ai-music-community-/actions/runs/28457094072>
+GitHub Actions Run：<https://github.com/SYGLGZ/-WeaveTone-AI-ai-music-community-/actions/runs/28560192490>
 
 该 Run 的三个 Job 均成功：
 
