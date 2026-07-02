@@ -176,4 +176,4 @@ docs/                    架构、API、演示与简历材料
 
 答辩或面试演示步骤见 [DEMO.md](docs/DEMO.md)，可直接用于简历的项目描述见 [RESUME.md](docs/RESUME.md)。
 
-自动化测试覆盖 19 个核心用例，测试分层与权限/一致性矩阵见 [TESTING.md](docs/TESTING.md)。推送 `v1.0.0-demo` Tag 会自动测试并发布 APK、后端分发包和 SHA-256 校验文件；准备公开仓库时请核对 [GitHub 发布清单](docs/RELEASE_CHECKLIST.md)、[Release Notes](docs/RELEASE_NOTES_v1.0.0-demo.md) 与 [CHANGELOG](CHANGELOG.md)。安全约定见 [SECURITY.md](SECURITY.md)。
+自动化测试覆盖 19 个核心用例，测试分层与权限/一致性矩阵见 [TESTING.md](docs/TESTING.md)，最近一次完整验收证据见 [VERIFICATION.md](docs/VERIFICATION.md)。推送 `v1.0.0-demo` Tag 会自动测试并发布 APK、后端分发包和 SHA-256 校验文件；准备公开仓库时请核对 [GitHub 发布清单](docs/RELEASE_CHECKLIST.md)、[Release Notes](docs/RELEASE_NOTES_v1.0.0-demo.md) 与 [CHANGELOG](CHANGELOG.md)。安全约定见 [SECURITY.md](SECURITY.md)。

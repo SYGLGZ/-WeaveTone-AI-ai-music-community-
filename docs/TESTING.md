@@ -2,6 +2,18 @@
 
 当前共有 19 个单元/路由测试：后端 14 个，Android JVM 5 个。后端使用 Ktor Test Host 与独立 H2 内存数据库，不依赖第三方 AI 额度。
 
+## 最近验证结果
+
+2026-07-02 使用 JDK 17 与 Gradle 8.13 对当前代码完成本地验收：
+
+- 后端：14 tests，0 failures，0 errors。
+- Android JVM：5 tests，0 failures，0 errors。
+- Android Debug APK：构建成功，23,618,720 bytes。
+- APK SHA-256：`0E2FE14B66F1D600C1BEA55E312FC83717A1E8A4CD32199593D1C02FE2F81AA2`。
+- GitHub Actions：Android、backend、docker-smoke 三个 Job 全部通过。
+
+完整环境和运行证据见 [VERIFICATION.md](VERIFICATION.md)。
+
 | 风险 | 自动化证据 |
 | --- | --- |
 | JWT 被篡改 | 拒绝修改 payload 的 Token |

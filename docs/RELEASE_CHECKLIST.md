@@ -15,6 +15,9 @@
 - [x] 关键权限与一致性路径具备自动化回归测试
 - [x] API、架构、部署、测试和 CHANGELOG 文档齐全
 - [x] Tag 触发 Release 工作流，产出 APK、后端分发包与 SHA-256 校验文件
+- [x] 2026-07-02 本地验证 19/19 测试、Debug APK、Docker 构建与重启持久化
+- [x] GitHub CI 的 Android、backend、docker-smoke 三个 Job 全绿
+- [x] GitHub 已识别 CI 与 Release 两个 Workflow 为 active
 
 ## 发布前由仓库所有者确认
 
@@ -23,5 +26,5 @@
 - [ ] 在 GitHub 开启 Private Vulnerability Reporting
 - [ ] 上传 60–90 秒演示视频或 GIF，并放到 README 顶部
 - [ ] 推送 `v1.0.0-demo` Tag，由 Release 工作流生成 GitHub Release
-- [ ] 确认 Git 历史中从未出现真实 API Key；如出现过则先吊销密钥
+- [x] 使用常见 MiniMax/Replicate/OpenAI/AWS Token 特征扫描当前文件与 Git 历史，未发现真实密钥
 - [ ] 把 `docs/RESUME.md` 中的项目描述加入简历并补充可量化结果

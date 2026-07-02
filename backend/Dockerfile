@@ -1,12 +1,15 @@
 FROM eclipse-temurin:17-jdk-jammy AS build
 
 WORKDIR /workspace
+ENV GRADLE_OPTS="-Dorg.gradle.internal.http.connectionTimeout=120000 -Dorg.gradle.internal.http.socketTimeout=120000"
 COPY gradlew gradlew.bat settings.gradle.kts build.gradle.kts gradle.properties ./
 COPY gradle ./gradle
-RUN chmod +x gradlew && ./gradlew dependencies --no-daemon
+RUN --mount=type=cache,target=/root/.gradle \
+    chmod +x gradlew && ./gradlew dependencies --no-daemon
 
 COPY src ./src
-RUN ./gradlew installDist --no-daemon
+RUN --mount=type=cache,target=/root/.gradle \
+    ./gradlew installDist --no-daemon
 
 FROM eclipse-temurin:17-jre-jammy
 

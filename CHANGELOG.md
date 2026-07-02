@@ -21,5 +21,6 @@
 
 - 使用事务、行锁和联合主键修复点赞计数漂移、重复关系与 AI 重复发布。
 - 删除作品或歌单时同步清理关系数据，避免外键失败和孤儿记录。
+- Docker 构建上下文从约 505 MB 降至 3.22 KB，并增加 Gradle 下载缓存与弱网超时配置。
 
-[1.0.0-demo]: https://github.com/SYGLGZ/ai-music-community/releases/tag/v1.0.0-demo
+[1.0.0-demo]: https://github.com/SYGLGZ/-WeaveTone-AI-ai-music-community-/releases/tag/v1.0.0-demo

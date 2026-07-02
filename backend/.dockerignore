@@ -8,3 +8,4 @@ uploads
 *.log
 .env
 run_backend_*_local.bat
+gradle/*.zip

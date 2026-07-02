@@ -40,3 +40,21 @@ docker compose down
 - `/ready`：执行 `SELECT 1`，数据库不可用时返回 503。
 
 镜像使用多阶段构建，运行阶段为 JRE 17，并以 UID 10001 的非 root 用户运行。GitHub Actions 会对每次提交执行 Compose 构建、启动和就绪探测。
+
+## 常见问题
+
+### Windows 提示 8080 端口不可用
+
+Hyper-V、WSL 或其他程序可能占用/保留 8080。无需修改 Compose 文件，可临时换宿主机端口：
+
+```powershell
+$env:BACKEND_PORT="18080"
+docker compose up --build -d --wait
+Invoke-RestMethod http://127.0.0.1:18080/ready
+```
+
+容器内仍监听 8080，Android 真机/模拟器的后端地址需要同步改为宿主机实际端口。
+
+### 首次构建网络中断
+
+Dockerfile 使用 BuildKit cache mount 保存 Gradle 下载，并将连接/读取超时提高到 120 秒；网络恢复后重新执行相同的 `docker compose up --build -d --wait` 即可复用缓存。
